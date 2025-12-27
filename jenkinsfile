@@ -1,0 +1,39 @@
+pipeline {
+    agent any
+
+    environment {
+        DEV_IMAGE  = "manasadevi09/dev"
+        PROD_IMAGE = "manasadevi09/prod"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: env.BRANCH_NAME,
+                url: 'https://github.com/manasamantripragada-oss/devops-build-New'
+            }
+        }
+
+        stage('Build & Push Image') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'dev') {
+                        sh "docker build -t $DEV_IMAGE:latest ."
+                        sh "docker push $DEV_IMAGE:latest"
+                    }
+
+                    if (env.BRANCH_NAME == 'main') {
+                        sh "docker build -t $PROD_IMAGE:latest ."
+                        sh "docker push $PROD_IMAGE:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh './deploy.sh'
+            }
+        }
+    }
+}
