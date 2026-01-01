@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         APP_NAME   = "react-ecommerce"
-        IMAGE_NAME = "react-app"
+        IMAGE_NAME = "react-ecommerce"
 
         DEV_REPO  = "manasadevi09/react-ecommerce-dev"
         PROD_REPO = "manasadevi09/react-ecommerce-prod"
@@ -11,19 +11,11 @@ pipeline {
 
     stages {
 
-        stage('Checkout Source Code') {
-            steps {
-                git branch: env.BRANCH_NAME,
-                    credentialsId: 'github-creds',
-                    url: 'https://github.com/manasamantripragada-oss/devops-build-New.git'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh '''
                   echo "Building Docker image..."
-                  docker build -t react-ecommerce-prod:latest .
+                  docker build -t ${IMAGE_NAME}:latest .
                 '''
             }
         }
@@ -46,13 +38,13 @@ pipeline {
             steps {
                 sh '''
                   if [ "$BRANCH_NAME" = "dev" ]; then
-                      echo "DEV branch detected – pushing to DEV repo"
+                      echo "DEV branch detected"
                       docker tag ${IMAGE_NAME}:latest ${DEV_REPO}:latest
                       docker push ${DEV_REPO}:latest
                   fi
 
                   if [ "$BRANCH_NAME" = "main" ]; then
-                      echo "MAIN branch detected – pushing to PROD repo"
+                      echo "MAIN branch detected"
                       docker tag ${IMAGE_NAME}:latest ${PROD_REPO}:latest
                       docker push ${PROD_REPO}:latest
                   fi
@@ -60,16 +52,24 @@ pipeline {
             }
         }
 
-        stage('Deploy to AWS EC2 (Production Only)') {
+        stage('Deploy to AWS EC2') {
             when {
-                branch 'main'
-                branch 'dev'
+                anyOf {
+                    branch 'dev'
+                    branch 'main'
+                }
             }
             steps {
                 sh '''
-                  echo "Deploying production image to AWS EC2..."
                   chmod +x scripts/deploy.sh
-                  ./scripts/deploy.sh manasadevi09/react-ecommerce-prod:latest
+
+                  if [ "$BRANCH_NAME" = "dev" ]; then
+                      ./scripts/deploy.sh ${DEV_REPO}:latest
+                  fi
+
+                  if [ "$BRANCH_NAME" = "main" ]; then
+                      ./scripts/deploy.sh ${PROD_REPO}:latest
+                  fi
                 '''
             }
         }
@@ -81,6 +81,9 @@ pipeline {
         }
         failure {
             echo "❌ Jenkins pipeline failed – check logs"
+        }
+        always {
+            sh 'docker system prune -f'
         }
     }
 }
