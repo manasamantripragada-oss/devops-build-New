@@ -1,5 +1,6 @@
 #!/bin/bash
-IMAGE_NAME=manasadevi09/dev
-TAG=latest
-docker build -t $IMAGE_NAME:$TAG .
-docker push $IMAGE_NAME:$TAG
+IMAGE=$1
+TAG=$2
+
+docker build -t $IMAGE:$TAG .
+docker push $IMAGE:$TAG

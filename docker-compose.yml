@@ -1,8 +1,7 @@
-version: '3.8'
-
+version: "3.8"
 services:
   react-app:
-    image: manasadevi09/dev:latest
+    image: manasadevi09/react-ecommerce:dev
     ports:
       - "80:80"
     restart: always
