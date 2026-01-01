@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DEV_IMAGE  = "manasadevi09/dev"
-        PROD_IMAGE = "manasadevi09/prod"
+        DEV_IMAGE  = "manasadevi09/react-ecommerce-dev"
+        PROD_IMAGE = "manasadevi09/react-ecommerce-prod"
     }
 
     stages {

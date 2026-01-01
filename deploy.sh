@@ -1,5 +1,11 @@
 #!/bin/bash
+IMAGE=$1
 
-docker pull manasadevi09/dev:latest
-docker-compose down
-docker-compose up -d
+docker pull $IMAGE
+docker stop react-app || true
+docker rm react-app || true
+
+docker run -d \
+--name react-app \
+-p 80:80 \
+$IMAGE
