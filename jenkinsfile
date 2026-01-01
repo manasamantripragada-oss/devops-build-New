@@ -2,38 +2,85 @@ pipeline {
     agent any
 
     environment {
-        DEV_IMAGE  = "manasadevi09/react-ecommerce-dev"
-        PROD_IMAGE = "manasadevi09/react-ecommerce-prod"
+        APP_NAME   = "react-ecommerce"
+        IMAGE_NAME = "react-app"
+
+        DEV_REPO  = "manasadevi09/react-ecommerce-dev"
+        PROD_REPO = "manasadevi09/react-ecommerce-prod"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Source Code') {
             steps {
                 git branch: env.BRANCH_NAME,
-                url: 'https://github.com/manasamantripragada-oss/devops-build-New'
+                    credentialsId: 'github-creds',
+                    url: 'https://github.com/manasamantripragada-oss/devops-build-New.git'
             }
         }
 
-        stage('Build & Push Image') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    if (env.BRANCH_NAME == 'dev') {
-                        sh "docker build -t $DEV_IMAGE:latest ."
-                        sh "docker push $DEV_IMAGE:latest"
-                    }
+                sh '''
+                  echo "Building Docker image..."
+                  docker build -t react-ecommerce-prod:latest .
+                '''
+            }
+        }
 
-                    if (env.BRANCH_NAME == 'main') {
-                        sh "docker build -t $PROD_IMAGE:latest ."
-                        sh "docker push $PROD_IMAGE:latest"
-                    }
+        stage('Docker Hub Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    '''
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Push Image to Docker Hub') {
             steps {
-                sh './deploy.sh'
+                sh '''
+                  if [ "$BRANCH_NAME" = "dev" ]; then
+                      echo "DEV branch detected – pushing to DEV repo"
+                      docker tag ${IMAGE_NAME}:latest ${DEV_REPO}:latest
+                      docker push ${DEV_REPO}:latest
+                  fi
+
+                  if [ "$BRANCH_NAME" = "main" ]; then
+                      echo "MAIN branch detected – pushing to PROD repo"
+                      docker tag ${IMAGE_NAME}:latest ${PROD_REPO}:latest
+                      docker push ${PROD_REPO}:latest
+                  fi
+                '''
             }
+        }
+
+        stage('Deploy to AWS EC2 (Production Only)') {
+            when {
+                branch 'main'
+                branch 'dev'
+            }
+            steps {
+                sh '''
+                  echo "Deploying production image to AWS EC2..."
+                  chmod +x scripts/deploy.sh
+                  ./scripts/deploy.sh manasadevi09/react-ecommerce-prod:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Jenkins pipeline completed successfully"
+        }
+        failure {
+            echo "❌ Jenkins pipeline failed – check logs"
         }
     }
 }
